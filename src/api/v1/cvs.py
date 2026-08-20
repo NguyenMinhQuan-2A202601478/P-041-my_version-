@@ -8,10 +8,9 @@ from src.core.security import get_current_user
 from src.db.database import get_db
 from src.db.models import CV, User
 from src.models.schemas import CVDetailResponse, CVSummary, CVUploadResponse
+from src.services.cv_parser import parse_cv
 
 router = APIRouter(prefix="/cvs", tags=["cvs"])
-
-from src.services.cv_parser import parse_cv
 
 
 def _validate_upload(file: UploadFile, content: bytes) -> None:

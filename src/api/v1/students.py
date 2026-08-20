@@ -5,12 +5,12 @@ active CounselorAssignment row, no counselor endpoint in counselor.py
 can access a student's CV/analysis/interview data.
 """
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from src.core.security import get_current_user, role_required
+from src.core.security import role_required
 from src.db.database import get_db
 from src.db.models import CounselorAssignment, CounselorFeedback, User
 
@@ -26,9 +26,7 @@ def grant_counselor_access(
     """Student grants a counselor access to their data."""
     counselor = db.get(User, counselor_id)
     if counselor is None or counselor.role != "counselor":
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Khong tim thay co van"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Khong tim thay co van")
 
     existing = (
         db.query(CounselorAssignment)
@@ -80,16 +78,12 @@ def revoke_counselor_access(
     """Student revokes a counselor's access to their data."""
     assignment = db.get(CounselorAssignment, assignment_id)
     if assignment is None or assignment.student_id != current_user.id:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Khong tim thay quyen truy cap"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Khong tim thay quyen truy cap")
     if assignment.status == "revoked":
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="Quyen truy cap da bi thu hoi truoc do"
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Quyen truy cap da bi thu hoi truoc do")
 
     assignment.status = "revoked"
-    assignment.revoked_at = datetime.now(timezone.utc)
+    assignment.revoked_at = datetime.now(UTC)
     db.commit()
     return {"message": "Da thu hoi quyen truy cap cua co van"}
 

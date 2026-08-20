@@ -200,11 +200,15 @@ def make_cv(db_session):
     """Factory: `make_cv(client, **overrides)` -> a `CV` row owned by that client's user."""
     from src.db.models import CV
 
-    def _make_cv(owner_client: TestClient, *, title: str = "CV Backend Developer", status: str = "confirmed", **overrides) -> CV:
+    def _make_cv(
+        owner_client: TestClient, *, title: str = "CV Backend Developer", status: str = "confirmed", **overrides
+    ) -> CV:
         cv = CV(
             user_id=owner_client.current_user.id,  # type: ignore[attr-defined]
             title=title,
-            raw_text=overrides.pop("raw_text", "Nguyen Van A - Backend Developer. Ky nang: Python, FastAPI, PostgreSQL, Git."),
+            raw_text=overrides.pop(
+                "raw_text", "Nguyen Van A - Backend Developer. Ky nang: Python, FastAPI, PostgreSQL, Git."
+            ),
             parsed_json=overrides.pop(
                 "parsed_json",
                 {

@@ -57,7 +57,9 @@ class ExperienceEntry(BaseModel):
 class ProjectEntry(BaseModel):
     name: str = Field(description="Project name/title as written in the CV.")
     description: str = Field(default="", description="Project description as written in the CV.")
-    technologies: list[str] = Field(default_factory=list, description="Technologies explicitly mentioned for this project.")
+    technologies: list[str] = Field(
+        default_factory=list, description="Technologies explicitly mentioned for this project."
+    )
 
 
 class StructuredCV(BaseModel):

@@ -58,7 +58,9 @@ def _assert_assigned(counselor_id: str, student_id: str, db: Session) -> Counsel
 
 
 @router.get("/students", response_model=list[StudentSummary])
-def list_students(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> list[StudentSummary]:
+def list_students(
+    current_user: User = Depends(get_current_user), db: Session = Depends(get_db)
+) -> list[StudentSummary]:
     assignments = (
         db.query(CounselorAssignment)
         .filter(CounselorAssignment.counselor_id == current_user.id, CounselorAssignment.status == "active")
@@ -69,9 +71,7 @@ def list_students(current_user: User = Depends(get_current_user), db: Session = 
         return []
 
     students = db.query(User).filter(User.id.in_(student_ids)).all()
-    return [
-        StudentSummary(student_id=s.id, full_name=s.full_name, email=s.email, status="active") for s in students
-    ]
+    return [StudentSummary(student_id=s.id, full_name=s.full_name, email=s.email, status="active") for s in students]
 
 
 @router.get("/dashboard", response_model=CounselorDashboardResponse)

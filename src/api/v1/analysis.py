@@ -13,10 +13,9 @@ from src.models.schemas import (
     SuggestionDecisionRequest,
     SuggestionDecisionResponse,
 )
+from src.services.gap_analysis_service import analyze_cv_against_jd
 
 router = APIRouter(prefix="/analysis", tags=["analysis"])
-
-from src.services.gap_analysis_service import analyze_cv_against_jd
 
 
 def _get_owned_analysis(analysis_id: str, current_user: User, db: Session) -> CVAnalysis:

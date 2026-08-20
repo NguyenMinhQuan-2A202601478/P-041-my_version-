@@ -216,9 +216,7 @@ async def evaluate_response(state: InterviewAgentState) -> dict[str, Any]:
     structured_llm = llm.with_structured_output(_StarCoverage)
     messages = [
         SystemMessage(content=STAR_EVALUATION_SYSTEM_PROMPT),
-        HumanMessage(
-            content=f"Question: {state['question_text']}\n\nCandidate's answer: {state['user_answer']}"
-        ),
+        HumanMessage(content=f"Question: {state['question_text']}\n\nCandidate's answer: {state['user_answer']}"),
     ]
     try:
         result = await structured_llm.ainvoke(messages)
@@ -236,7 +234,9 @@ async def evaluate_response(state: InterviewAgentState) -> dict[str, Any]:
 async def score_star(state: InterviewAgentState) -> dict[str, Any]:
     evaluation = state.get("evaluation", {})
     star_score = {
-        component: round(_COVERAGE_FACTOR.get(evaluation.get(component, "NOT_DEMONSTRATED"), 0.0) * MAX_SCORE_PER_COMPONENT, 2)
+        component: round(
+            _COVERAGE_FACTOR.get(evaluation.get(component, "NOT_DEMONSTRATED"), 0.0) * MAX_SCORE_PER_COMPONENT, 2
+        )
         for component in _STAR_COMPONENTS
     }
     return {"star_score": star_score}
@@ -252,9 +252,7 @@ async def generate_followup(state: InterviewAgentState) -> dict[str, Any]:
     llm = get_llm()
     messages = [
         SystemMessage(content=FOLLOW_UP_SYSTEM_PROMPT.format(weakest_component=weakest)),
-        HumanMessage(
-            content=f"Question: {state['question_text']}\n\nCandidate's answer: {state['user_answer']}"
-        ),
+        HumanMessage(content=f"Question: {state['question_text']}\n\nCandidate's answer: {state['user_answer']}"),
     ]
     try:
         response = await llm.ainvoke(messages)

@@ -36,8 +36,12 @@ class GapAnalysisState(TypedDict, total=False):
     jd_parsed_json: dict[str, Any]  # Structured JD, if already parsed by the caller
 
     # --- Intermediate (filled in by nodes as the graph runs) ---
-    cv_skills: dict[str, Any]  # Output of extract_cv_skills: {skills, experience_summary, education_summary, projects_summary}
-    jd_requirements_extracted: dict[str, Any]  # Output of extract_jd_requirements: {required_skills, preferred_skills, min_years_experience, ...}
+    cv_skills: dict[
+        str, Any
+    ]  # Output of extract_cv_skills: {skills, experience_summary, education_summary, projects_summary}
+    jd_requirements_extracted: dict[
+        str, Any
+    ]  # Output of extract_jd_requirements: {required_skills, preferred_skills, min_years_experience, ...}
     matched_skills: list[str]  # Skills present in both CV and JD
     partial_skills: list[str]  # Skills the CV mentions but with weaker/unclear evidence than the JD wants
     missing_skills: list[str]  # JD skills with no evidence in the CV at all

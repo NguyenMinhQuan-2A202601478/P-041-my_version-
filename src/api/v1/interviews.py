@@ -1,7 +1,7 @@
 """Mock Interview (F-05, F-06): bat dau phien, tra loi, bao cao STAR, lich su."""
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
@@ -143,7 +143,7 @@ async def respond_interview(
     if next_index >= session.total_questions:
         session.status = "completed"
         session.current_question_index = next_index
-        session.completed_at = datetime.now(timezone.utc)
+        session.completed_at = datetime.now(UTC)
         db.commit()
 
         await _create_report(session, db)
