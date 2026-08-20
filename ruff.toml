@@ -1,0 +1,13 @@
+# Ruff configuration for CV Assistant (my_version).
+# Mirrors the original P-041 project's ruff.toml, adjusted to target Python 3.11.
+
+target-version = "py311"
+line-length = 120
+
+[lint]
+select = ["E", "F", "I", "N", "W", "UP"]
+ignore = ["E501"]
+
+[format]
+quote-style = "double"
+indent-style = "space"

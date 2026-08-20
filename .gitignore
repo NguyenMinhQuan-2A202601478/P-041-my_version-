@@ -1,0 +1,75 @@
+# Python
+__pycache__/
+*.py[cod]
+*.so
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# IDE / editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Data
+*.db
+*.sqlite3
+postgres_data/
+qdrant_storage/
+
+# Logs
+logs/
+*.log
+
+# Test coverage & caches
+htmlcov/
+.coverage
+coverage.xml
+.pytest_cache/
+.pytest_tmp/
+.ruff_cache/
+.mypy_cache/
+
+# Docker
+docker-compose.override.yml
+
+# Frontend (Node/Next.js)
+node_modules/
+*.tsbuildinfo
+.next/
+out/
+
+# AI agent tool state (but NOT .claude/ — .claude/agents/*.md defines this
+# project's sub-agent team and must stay version-controlled)
+.ai-log/
+.codex/
+.cursor/
+.gemini/
+
+# Eval outputs (keep the folder via .gitkeep, ignore generated results)
+eval/results/*
+!eval/results/.gitkeep
+
+# graphify — artifact sinh ra tai cho, nang ~9MB, khong commit
+graphify-out/
+
+# Cong cu ca nhan "bao cao tien do" — KHONG nop BTC, khong version-control
+.claude/settings.local.json
+scripts/progress_report_hook.py
