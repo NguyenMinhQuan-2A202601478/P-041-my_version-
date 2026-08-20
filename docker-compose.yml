@@ -1,0 +1,74 @@
+# Docker Compose for CV Assistant (my_version).
+# Services: backend (FastAPI), db (PostgreSQL), qdrant (Vector DB).
+# The frontend (Next.js) service will be added later by agent_web.
+#
+# Usage: copy .env.example to .env, fill in real values, then `docker compose up`.
+
+name: cv-assistant
+
+services:
+  db:
+    image: postgres:16-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-cv_assistant}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
+      POSTGRES_DB: ${POSTGRES_DB:-cv_assistant}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  qdrant:
+    image: qdrant/qdrant:latest
+    ports:
+      - "6333:6333"
+    volumes:
+      - qdrant_data:/qdrant/storage
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-cv_assistant}:${POSTGRES_PASSWORD:-changeme}@db:5432/${POSTGRES_DB:-cv_assistant}
+      QDRANT_URL: http://qdrant:6333
+      QDRANT_HOST: qdrant
+      QDRANT_PORT: 6333
+    ports:
+      - "8000:8000"
+    volumes:
+      # Dev convenience: reflect local source edits into the container.
+      # Remove this mount for a production-like build.
+      - ./src:/app/src
+    depends_on:
+      db:
+        condition: service_healthy
+      qdrant:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      start_period: 20s
+      retries: 3
+    restart: unless-stopped
+
+  # frontend:
+  #   Placeholder for agent_web — Next.js service.
+  #   build: { context: ./src/frontend, dockerfile: Dockerfile }
+  #   ports: ["3000:3000"]
+  #   environment: { API_PROXY_TARGET: http://backend:8000 }
+  #   depends_on: { backend: { condition: service_healthy } }
+
+volumes:
+  postgres_data:
+  qdrant_data:

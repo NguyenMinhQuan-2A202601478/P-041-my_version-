@@ -1,0 +1,24 @@
+# Keep the Docker build context small and avoid leaking local/dev-only files.
+.git/
+.github/
+.claude/
+.codex/
+.cursor/
+.gemini/
+.venv/
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.ai-log/
+tests/
+eval/
+docs/
+*.md
+.env
+.env.*
+!.env.example
+node_modules/
+src/frontend/
