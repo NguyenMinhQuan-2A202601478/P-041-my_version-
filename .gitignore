@@ -66,3 +66,10 @@ out/
 # Eval outputs (keep the folder via .gitkeep, ignore generated results)
 eval/results/*
 !eval/results/.gitkeep
+
+# graphify — artifact sinh ra tai cho, nang ~9MB, khong commit
+graphify-out/
+
+# Cong cu ca nhan "bao cao tien do" — KHONG nop BTC, khong version-control
+.claude/settings.local.json
+scripts/progress_report_hook.py
