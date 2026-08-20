@@ -1,19 +1,18 @@
 """Tests for /api/v1/interviews/* (F-05, F-06: Mock Interview + STAR report).
 
 Mocks the service boundary the route actually imports from
-(`src.api.v1.interviews.generate_questions` / `.evaluate_answer`) instead of
-calling a real LLM. NOTE: as with analysis.py (see test_analysis.py), the
-real `src/services/interview_service.py` does not define functions with
-these exact names (it exposes `start_interview`/`submit_answer`/`get_report`
-instead) — another route/service naming mismatch reported separately in the
-QA findings rather than patched around in src/.
+`src/services/interview_service.py` -- `generate_questions_for_session`,
+`evaluate_single_answer` and `generate_report_for_session` -- instead of
+calling a real LLM. All three are `async` with keyword-only parameters, and
+the fakes below mirror those signatures plus the result shapes the route
+reads.
 
-Also note: `POST /interviews/{id}/respond` marks a session `completed` but
-never creates an `interview_reports` row (no code path calls
-`InterviewReport(...)` + `db.add`), so `GET /interviews/{id}/report` 404s
-for every session today, even completed ones. Tests for the report endpoint
-below insert the `InterviewReport` row directly via `db_session` to exercise
-the endpoint's own read/serialization logic in isolation from that gap.
+`generate_report_for_session` is faked too because completing the last
+question triggers `_create_report()`, which would otherwise reach for a real
+LLM; with the fake, the `interview_reports` row is written the same way it
+is in production. Tests for `GET /interviews/{id}/report` still insert their
+own `InterviewReport` row via `db_session` so they exercise the endpoint's
+read/serialization logic against known values.
 """
 
 from __future__ import annotations
@@ -23,22 +22,46 @@ import pytest
 START_URL = "/api/v1/interviews/start"
 
 
-def _fake_generate_questions(cv, jd, total_questions):
-    return [f"Cau hoi phong van so {i + 1} cho vi tri {jd.title}" for i in range(total_questions)]
+async def _fake_generate_questions_for_session(
+    *,
+    cv_text: str,
+    cv_parsed_json: dict | None = None,
+    jd_title: str,
+    jd_requirements: str,
+    num_questions: int = 5,
+) -> list[str]:
+    return [f"Cau hoi phong van so {i + 1} cho vi tri {jd_title}" for i in range(num_questions)]
 
 
-def _fake_evaluate_answer(question, answer, is_follow_up=False):
+async def _fake_evaluate_single_answer(*, question_text: str, user_answer: str) -> dict:
     return {
         "needs_follow_up": False,
         "follow_up_question": None,
         "star_score": {"situation": 20.0, "task": 20.0, "action": 20.0, "result": 20.0},
+        "feedback": "Cau tra loi day du theo STAR",
+    }
+
+
+async def _fake_generate_report_for_session(*, qa_history: list[dict], jd_title: str) -> dict:
+    return {
+        "total_score": 80.0,
+        "star_scores": {
+            "situation": {"score": 20.0, "max": 25, "feedback": "Ro rang"},
+            "task": {"score": 20.0, "max": 25, "feedback": "Cu the"},
+            "action": {"score": 20.0, "max": 25, "feedback": "Chi tiet"},
+            "result": {"score": 20.0, "max": 25, "feedback": "Co so lieu"},
+        },
+        "strengths": ["Trinh bay mach lac"],
+        "improvements": ["Bo sung so lieu ket qua"],
+        "recommendations": [],
     }
 
 
 @pytest.fixture(autouse=True)
 def _patch_interview_service(monkeypatch):
-    monkeypatch.setattr("src.api.v1.interviews.generate_questions", _fake_generate_questions)
-    monkeypatch.setattr("src.api.v1.interviews.evaluate_answer", _fake_evaluate_answer)
+    monkeypatch.setattr("src.api.v1.interviews.generate_questions_for_session", _fake_generate_questions_for_session)
+    monkeypatch.setattr("src.api.v1.interviews.evaluate_single_answer", _fake_evaluate_single_answer)
+    monkeypatch.setattr("src.api.v1.interviews.generate_report_for_session", _fake_generate_report_for_session)
 
 
 def test_start_interview_with_valid_cv_and_jd_returns_201(student_client, make_cv, make_jd):
@@ -114,14 +137,14 @@ def test_submit_response_completes_session_after_last_question(student_client, m
 
 
 def test_submit_response_with_follow_up_needed(student_client, make_cv, make_jd, monkeypatch):
-    monkeypatch.setattr(
-        "src.api.v1.interviews.evaluate_answer",
-        lambda question, answer, is_follow_up=False: {
+    async def _fake_needs_follow_up(*, question_text: str, user_answer: str) -> dict:
+        return {
             "needs_follow_up": True,
             "follow_up_question": "Ban co the neu cu the ket qua dat duoc khong?",
             "star_score": {"situation": 10.0, "task": 10.0, "action": 10.0, "result": 5.0},
-        },
-    )
+        }
+
+    monkeypatch.setattr("src.api.v1.interviews.evaluate_single_answer", _fake_needs_follow_up)
     cv = make_cv(student_client)
     jd = make_jd()
     session_id = student_client.post(START_URL, json={"cv_id": cv.id, "jd_id": jd.id, "total_questions": 5}).json()[
@@ -200,7 +223,9 @@ def test_get_report_before_ready_returns_404(student_client, make_cv, make_jd):
     assert response.status_code == 404
 
 
-def test_get_interview_history_returns_only_current_users_sessions(student_client, other_student_client, make_cv, make_jd):
+def test_get_interview_history_returns_only_current_users_sessions(
+    student_client, other_student_client, make_cv, make_jd
+):
     cv_a = make_cv(student_client)
     cv_b = make_cv(other_student_client)
     jd = make_jd()

@@ -3,13 +3,11 @@
 The real Gap Analysis Agent is a LangGraph pipeline that calls an LLM (see
 src/agents/gap_analysis/). Per the QA task's constraints, these API tests
 mock the service layer boundary instead of hitting a real LLM: they patch
-`src.api.v1.analysis.run_gap_analysis`, the exact name the route imports
-(see the module docstring in src/api/v1/analysis.py — the real service file
-is `gap_analysis_service.py` exposing `analyze_cv_against_jd`, a different
-name in a different module, so the route's own `try/except ImportError`
-already falls back to `run_gap_analysis = None` today; this integration gap
-is reported separately in the QA findings, not fixed here since src/ is out
-of scope for this agent).
+`src.api.v1.analysis.analyze_cv_against_jd`, the exact name the route
+imports from `src/services/gap_analysis_service.py`. The fake mirrors the
+real signature (keyword-only, `async`) and the result shape the route reads
+(`match_score`, `matched_skills` / `partial_skills` / `missing_skills`,
+`gaps`, `suggestions`).
 """
 
 from __future__ import annotations
@@ -23,9 +21,13 @@ HISTORY_URL = "/api/v1/analysis/history"
 def _fake_result(**overrides) -> dict:
     result = {
         "match_score": 72.5,
-        "gap_analysis": {
-            "matched_skills": ["Python", "FastAPI"],
-            "missing_skills": ["Docker"],
+        "matched_skills": ["Python", "FastAPI"],
+        "partial_skills": [],
+        "missing_skills": ["Docker"],
+        "gaps": {
+            "skill_gaps": ["Docker"],
+            "experience_gap": {"required_years": 2, "cv_years": 1},
+            "education_requirement": "Cu nhan CNTT hoac tuong duong",
         },
         "suggestions": [
             {
@@ -47,11 +49,18 @@ def _fake_result(**overrides) -> dict:
 
 
 @pytest.fixture(autouse=True)
-def _patch_run_gap_analysis(monkeypatch):
-    def _fake_run_gap_analysis(cv, jd):
+def _patch_analyze_cv_against_jd(monkeypatch):
+    async def _fake_analyze_cv_against_jd(
+        *,
+        cv_raw_text: str,
+        cv_parsed_json: dict | None = None,
+        jd_title: str,
+        jd_requirements: str,
+        jd_parsed_json: dict | None = None,
+    ) -> dict:
         return _fake_result()
 
-    monkeypatch.setattr("src.api.v1.analysis.run_gap_analysis", _fake_run_gap_analysis)
+    monkeypatch.setattr("src.api.v1.analysis.analyze_cv_against_jd", _fake_analyze_cv_against_jd)
 
 
 def test_start_gap_analysis_valid_returns_200(student_client, make_cv, make_jd):

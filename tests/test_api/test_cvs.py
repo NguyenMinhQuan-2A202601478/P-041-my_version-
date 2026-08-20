@@ -1,17 +1,12 @@
 """Tests for /api/v1/cvs/* (F-02: Upload & Parse CV).
 
-NOTE on mocking `parse_cv`: `src/api/v1/cvs.py::upload_cv` calls
-`parse_cv(content, file.filename)` synchronously and unpacks the result as a
-`(raw_text, parsed_json)` tuple. The real `src.services.cv_parser.parse_cv`
-is an `async def` that returns a single dict (`{"raw_text": ..., "parsed_json":
-...}`), not a 2-tuple — so calling the *real* function from this route
-currently raises `TypeError` (a coroutine object isn't iterable) before it
-ever reaches the LLM. This looks like an integration bug between agent_web's
-route and agent_ai's service (see the QA report for details) — since this
-suite must not modify `src/`, tests that need a successful upload monkeypatch
-`src.api.v1.cvs.parse_cv` with a plain, synchronous fake that returns the
-2-tuple the route actually expects, so we can still verify routing/
-validation/ownership behavior independent of that bug.
+NOTE on mocking `parse_cv`: `src/api/v1/cvs.py::upload_cv` awaits
+`parse_cv(content, file.filename)` and reads `raw_text` / `parsed_json` off
+the dict it returns, matching the real `src.services.cv_parser.parse_cv`
+(`async def` returning `{"raw_text": ..., "parsed_json": ...}`). Tests that
+need a successful upload monkeypatch `src.api.v1.cvs.parse_cv` with an async
+fake returning that same dict, so routing / validation / ownership behavior
+can be verified without calling the LLM.
 """
 
 from __future__ import annotations
@@ -21,11 +16,11 @@ import pytest
 UPLOAD_URL = "/api/v1/cvs/upload"
 
 
-def _fake_parse_cv(content: bytes, filename: str):
-    return (
-        "Nguyen Van A - Backend Developer. Ky nang: Python, FastAPI, PostgreSQL.",
-        {"full_name": "Nguyen Van A", "skills": ["Python", "FastAPI", "PostgreSQL"]},
-    )
+async def _fake_parse_cv(content: bytes, filename: str) -> dict:
+    return {
+        "raw_text": "Nguyen Van A - Backend Developer. Ky nang: Python, FastAPI, PostgreSQL.",
+        "parsed_json": {"full_name": "Nguyen Van A", "skills": ["Python", "FastAPI", "PostgreSQL"]},
+    }
 
 
 @pytest.fixture(autouse=True)

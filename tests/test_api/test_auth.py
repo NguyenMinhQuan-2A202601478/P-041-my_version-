@@ -107,18 +107,55 @@ def test_me_with_garbage_token_returns_401(client):
     assert response.status_code == 401
 
 
-def test_registered_role_matches_token_role_claim(client):
-    client.post(REGISTER_URL, json=_register_payload(role="counselor"))
+def test_self_registration_cannot_escalate_role(client):
+    """Tu dang ky luon ra `student`, va JWT phai phan anh dung role do.
+
+    src/api/v1/auth.py::register co y hard-code `role = "student"`: gui
+    `role="counselor"` trong body KHONG duoc cap quyen do (tai khoan
+    counselor/admin phai do admin tao hoac seed script). Day la chot chan
+    privilege escalation, nen test nay ghim lai hanh vi ay.
+    """
+    register = client.post(REGISTER_URL, json=_register_payload(role="counselor"))
+
+    assert register.status_code == 201
+    assert register.json()["role"] == "student"
+
     login = client.post(LOGIN_URL, json={"email": "sinhvien.test@example.test", "password": "Sup3r-Secret-1"})
     token = login.json()["access_token"]
 
-    # Decode the JWT payload directly to confirm the `role` claim was set
-    # from the registered role (not silently defaulted).
+    # Decode the JWT payload directly: the `role` claim must mirror the role
+    # the user really has in the DB, not the one that was requested.
     payload = jwt.decode(token, settings.JWT_SECRET_KEY, algorithms=[settings.JWT_ALGORITHM])
-    assert payload["role"] == "counselor"
+    assert payload["role"] == "student"
 
     me_response = client.get(ME_URL, headers={"Authorization": f"Bearer {token}"})
-    assert me_response.json()["role"] == "counselor"
+    assert me_response.json()["role"] == "student"
+
+
+def test_login_token_role_claim_follows_stored_role(client, db_session):
+    """Mat kia cua test tren: claim `role` doc tu user row, khong bi default.
+
+    Mot counselor duoc tao theo dung duong admin/seed script phai nhan
+    `role="counselor"` trong JWT khi dang nhap qua /auth/login.
+    """
+    from src.core.security import hash_password
+    from src.db.models import User
+
+    password = "C0unselor-Secret-1"
+    counselor = User(
+        email="covan.test@example.test",
+        hashed_password=hash_password(password),
+        full_name="Co van C",
+        role="counselor",
+    )
+    db_session.add(counselor)
+    db_session.commit()
+
+    login = client.post(LOGIN_URL, json={"email": counselor.email, "password": password})
+
+    assert login.status_code == 200
+    payload = jwt.decode(login.json()["access_token"], settings.JWT_SECRET_KEY, algorithms=[settings.JWT_ALGORITHM])
+    assert payload["role"] == "counselor"
 
 
 def test_google_oauth_is_not_yet_implemented(client):
